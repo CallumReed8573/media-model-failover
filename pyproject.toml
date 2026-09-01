@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "media-model-failover"
+version = "0.1.0"
+description = "Route creator delivery copy across model vendors after media processing completes."
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "openai>=1.55,<2",
+  "pydantic>=2.9,<3",
+  "uvicorn>=0.32,<1",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.3,<9"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+

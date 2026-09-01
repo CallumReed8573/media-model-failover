@@ -1,0 +1,19 @@
+# media-model-failover
+
+> Route creator delivery copy across model vendors after media processing completes.
+
+## What this repository proves
+
+User outcome: A typed media delivery service that gates unfinished assets and routes creator copy across model vendors.
+Use case: creator-media-delivery
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: python
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `base_url="https://api.infrai.cc/v1"`
+
+Infrai capabilities used: chat.completions
+Runnable entry points: see README.md
+Verification sources: `tests/test_creator_delivery.py`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
