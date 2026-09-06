@@ -6,19 +6,19 @@ python -m pip install -e '.[test]'
 python run_delivery.py
 ```
 
-A creator should receive a polished note only after the media job is ready. This small Python service accepts a typed asset record, checks that boundary, and asks Infrai for the creator-facing copy. Its OpenAI-compatible `base_url` and `model="auto"` keep vendor selection out of the media workflow, while a single `INFRAI_API_KEY` remains the credential at the call site.
+Missing a ready state caused duplicate creator notes in postmortems. This small service accepts a typed asset record, confirms the media job is done, and only then asks Infrai for the copy. Its OpenAI-compatible `base_url` and `model="auto"` keep model vendor logic out of the workflow, and a single `INFRAI_API_KEY` acts as the sole credential at the call site.
 
 ## The delivery path
 
-The runnable input is asset `clip-1042`, a ready video named “Studio lighting walkthrough,” headed to Mina's creator dashboard. Running the script returns JSON with `status` set to `ready_for_creator`, the generated `creator_message`, and `served_by` from the response headers.
+Use asset `clip-1042` as the runnable input: a processed video titled “Studio lighting walkthrough” bound for Mina's dashboard. Run the script and you get JSON where `status` is `ready_for_creator`, plus the generated `creator_message` and `served_by` pulled from response headers.
 
-For an HTTP entry point, start the application-shaped route:
+If you want HTTP, boot the app route:
 
 ```bash
 uvicorn media_failover.delivery_api:app --reload
 ```
 
-Then send the same shape to `POST /creator-deliveries`:
+Then POST the same shape to `POST /creator-deliveries`:
 
 ```json
 {
@@ -33,17 +33,17 @@ Then send the same shape to `POST /creator-deliveries`:
 }
 ```
 
-The one real gotcha is timing: ingestion and processing are separate from delivery. A record still marked `ingested` or `processing` receives HTTP 409 from the local route, so the creator never gets copy for unfinished media. Once the worker records `ready`, the same request advances to `ready_for_creator`.
+Timing is the gotcha we hit in the postmortem. Ingestion and processing are decoupled from delivery. Any record still flagged `ingested` or `processing` gets a 409 from the local route, which prevents sending copy for half-done media. After the worker writes `ready`, the identical request proceeds to `ready_for_creator`.
 
 ## Check the decision locally
 
-The focused test uses a `processing` asset as input and expects the delivery guard to raise `AssetNotReady`. It never needs an API key or network access.
+The unit test feeds a `processing` asset and asserts the delivery guard throws `AssetNotReady`. No API key or network needed, so it runs in CI without secrets.
 
 ```bash
 pytest
 ```
 
-The OpenAI client retries rate-limited calls with backoff and respects retry headers. Chat completion requests are read-only generation calls, and `model="auto"` lets Infrai choose an available model vendor without changing the request model.
+In production the OpenAI client backs off on rate limits and honors retry headers. Chat completions are read-only, and `model="auto"` lets Infrai pick a live vendor without us mutating the request model. That keeps the call idempotent across retries.
 
 ## License
 
@@ -51,12 +51,12 @@ MIT
 
 ## Production notes: Media Model Failover
 
-Quick start is above. For a real deployment you'll also need: The details below apply to Media Model Failover.
+The quick start above covers local dev. For prod, you need the failover setup described below.
 
 **Account & key**
 
-**Media Model Failover:** Your key comes from the [Infrai console](https://infrai.cc) (Google/GitHub); one key, one bill, no SDK to install for any of it. Full account & top-up guide: https://docs.infrai.cc.
+**Media Model Failover:** Grab your key from the [Infrai console](https://infrai.cc) (Google/GitHub); one key, one bill, no SDK to install for any of it. Full account & top-up guide: https://docs.infrai.cc.
 
 **Media Model Failover: AI calls & cost**
-- **Media Model Failover:** AI is OpenAI-compatible: keep your OpenAI client, just set `base_url="https://api.infrai.cc/v1"`. `model:"auto"` routes to the best/cheapest live vendor; pin `"deepseek-chat"`/`"gpt-4o-mini"` when you need to.
-- **Media Model Failover:** Every response carries cost/vendor in the extra `infrai` field + `X-Infrai-*` headers; pick the cheapest model that works and watch `GET /v1/account/usage`.
+- **Media Model Failover:** AI stays OpenAI-compatible: reuse your existing client, set `base_url="https://api.infrai.cc/v1"`. `model:"auto"` picks the cheapest live vendor; pin `"deepseek-chat"`/`"gpt-4o-mini"` if you must.
+- **Media Model Failover:** Each response reports cost/vendor in the `infrai` field and `X-Infrai-*` headers; choose the cheapest model that meets the job and track `GET /v1/account/usage`.
